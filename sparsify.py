@@ -151,12 +151,12 @@ if __name__ == "__main__":
         'down_proj',
     ]
     NUM_EXPERTS=16
-    ACTIVE_EXPERTS=8
+    ACTIVE_EXPERTS=4
 
 
     global model, tok
 
-    model = AutoModelForCausalLM.from_pretrained(MODEL_DIR, torch_dtype=torch.bfloat16, device_map='cuda:0', attn_implementation='flash_attention_2')#, quantization_config=qconf)
+    model = AutoModelForCausalLM.from_pretrained(MODEL_DIR, torch_dtype=torch.bfloat16, device_map='cuda:0', attn_implementation='flash_attention_2')
     set_req_grad_recursive(model, False)
     tok = AutoTokenizer.from_pretrained(MODEL_DIR)
 
@@ -164,7 +164,7 @@ if __name__ == "__main__":
 
     for i, layer in enumerate(model.model.layers):
 
-        if i < 4:
+        if i < 6:
             continue
 
         replace_module(layer, MODULES_TO_MOE, {'num_experts': NUM_EXPERTS, 'active_experts': ACTIVE_EXPERTS, 'rank_reduction_factor': 1, 'router_bias': False})
