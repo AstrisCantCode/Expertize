@@ -111,11 +111,11 @@ def train_on_sample():
     print(f"Minibatch loss: {sum(minibatch_losses).item()}")
     return sum(minibatch_losses)
 
-def train_dual(lr, weight_decay, dataset, dataset_fraction, max_tokens, seed=42):
+def train_dual(lr, weight_decay, dataset, max_dataset_fraction, max_tokens, loss_cutoff=0.2, seed=42):
 
     global input_batch, router_optim, expert_optim
 
-    train_samples = fetch_some_samples(dataset=dataset, dataset_fraction=dataset_fraction, tokenizer=tok, max_tokens=max_tokens, seed=seed)
+    train_samples = fetch_some_samples(dataset=dataset, dataset_fraction=max_dataset_fraction, tokenizer=tok, max_tokens=max_tokens, seed=seed)
 
     router_optim = torch.optim.LBFGS([param for name, param in model.named_parameters() if param.requires_grad and "router_proj" in name], lr=0.1)
     expert_optim = torch.optim.NAdam([param for name, param in model.named_parameters() if param.requires_grad and "experts" in name], lr=lr)
@@ -127,19 +127,28 @@ def train_dual(lr, weight_decay, dataset, dataset_fraction, max_tokens, seed=42)
 
     for minibatch in batched(train_samples, GRAD_ACC_STEPS):
         input_batch = minibatch
+
         router_optim.step(train_on_sample)
         router_scheduler.step()
         print('Trained router.')
-        train_on_sample()
+
+        loss = train_on_sample()
+        expert_optim.step()
+        expert_optim.zero_grad()
+        loss = train_on_sample()
         expert_optim.step()
         expert_optim.zero_grad()
         expert_scheduler.step()
         print('Trained experts.')
 
+        if loss < loss_cutoff:
+            break
+
 
 if __name__ == "__main__":
 
     MODEL_DIR = "Meta-Llama-3-8B/"
+    OUT_DIR = "Meta-Llama-3-8B-MoE/model.pt"
 
     MODULES_TO_MOE=[
         'gate_proj',
@@ -147,7 +156,7 @@ if __name__ == "__main__":
         'down_proj',
     ]
     NUM_EXPERTS=16
-    ACTIVE_EXPERTS=4
+    ACTIVE_EXPERTS=8
 
 
     global model, tok
@@ -159,12 +168,19 @@ if __name__ == "__main__":
     dataset = load_dataset('allenai/c4', 'en.noblocklist', data_files='en.noblocklist/c4-train.00000-of-01024.json.gz', ignore_verifications=True)['train'].select_columns(['text'])
 
     for i, layer in enumerate(model.model.layers):
-        #if i < 7:
-        #    continue
-#
+
+        if i < 4:
+            continue
+
         replace_module(layer, MODULES_TO_MOE, {'num_experts': NUM_EXPERTS, 'active_experts': ACTIVE_EXPERTS, 'rank_reduction_factor': 1, 'router_bias': False})
 
-        print(f"Training layer {i}'s router")
+        print(f"Training layer {i}")
         layer.apply(set_dual_train_mode)
-        train_dual(lr=0.001, weight_decay=5e-3, dataset=dataset, dataset_fraction=0.0002, max_tokens=128, seed=i) #0.001 generally works well
-        
+        train_dual(lr=0.001, weight_decay=5e-3, dataset=dataset, max_dataset_fraction=0.001, max_tokens=128, seed=i) #0.001 generally works well
+        layer.apply(set_no_train_mode)
+
+        pipe = pipeline("text-generation", model=model, tokenizer=tok)
+        eval_text = pipe("Question: Why is the sky blue? \nAnswer: ", max_new_tokens=256)
+        print(eval_text)
+
+        torch.save(model, out_dir)
