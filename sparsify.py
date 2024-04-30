@@ -103,11 +103,6 @@ def train_on_sample():
         loss = out.loss / minibatch_size
         minibatch_losses.append(loss)
         loss.backward()
-    #with torch.no_grad():
-    #    for param in model.parameters():
-    #        if param.requires_grad:
-    #            std, mean = torch.std_mean(param.grad)
-    #            param.grad = (torch.nn.functional.tanh((param.grad - mean) / std) + mean)
     print(f"Minibatch loss: {sum(minibatch_losses).item()}")
     return sum(minibatch_losses)
 
