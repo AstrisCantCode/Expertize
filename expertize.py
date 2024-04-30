@@ -19,8 +19,6 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 #                   among the experts. By using the router to pick the most important experts, the original 
 #                   computation is effectively split up into subproblems, and the most important subproblems are run.
 
-# which are all instances of LowRankLinear
-
 
 
 class LowRankLinear(nn.Module):
