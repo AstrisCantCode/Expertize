@@ -164,7 +164,7 @@ if __name__ == "__main__":
 
     for i, layer in enumerate(model.model.layers):
 
-        if i < 6:
+        if i < 8:
             continue
 
         replace_module(layer, MODULES_TO_MOE, {'num_experts': NUM_EXPERTS, 'active_experts': ACTIVE_EXPERTS, 'rank_reduction_factor': 1, 'router_bias': False})
