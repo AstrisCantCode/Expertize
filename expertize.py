@@ -117,7 +117,7 @@ class ExpertizedLinear(nn.Module):
         #      rank reduction factor. 1 or 2 is generally a good starting point. the number of experts can be varied without
         #      significantly changing the number of parameters, up to min(d_in, d_out) (which is generally far higher
         #      than a MoE module should have, eg. experts=8, but min(d_in, d_out)=1024)
-        #      furthermore, 
+        #      For more information, check out this visualization: https://www.desmos.com/calculator/0labfhrnui
         d_out, d_in = linear_module.weight.data.shape
         orig_dtype = linear_module.weight.data.dtype
         orig_device = linear_module.weight.data.device
@@ -159,7 +159,7 @@ class ExpertizedLinear(nn.Module):
 ### THEYRE THE SAME!!!!
 ### SUCCESS!!!!!
 
-# well, sorta. the router is initialized with ones, so it should assign equal prob
+# well, sorta. the router is (was) initialized with ones, so it should assign equal prob
 # of each expert for each vector. however, due to some weird floating point stuff (I think),
 # its a little inconsistent. As a result, what *should* be [0.5, 0.5] ends up being
 # [0.4823, 0.5177]. with finetuning (and hopefully without), this shouldn't affect the model.
