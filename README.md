@@ -1,1 +1,2 @@
 note: after thinking about this, I'm realizing I'm woefully underinformed about calculus. I'll work on grokking calculus
+Note 2: After some tests, I now believe this to be ineffective at 'expertizing' language models. Initial reductions in training loss were likely due to re-training of the newly created experts, which defeats the purpose of this repo. (If you need to fully re-train the MoE block, what's the point of starting from the base model's weights and applying SVD?)
